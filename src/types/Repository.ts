@@ -1,7 +1,7 @@
 /*---------------------------------------------------------------------------------------------
-* Copyright (c) Bentley Systems, Incorporated. All rights reserved.
-* See LICENSE.md in the project root for license terms and full copyright notice.
-*--------------------------------------------------------------------------------------------*/
+ * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
+ * See LICENSE.md in the project root for license terms and full copyright notice.
+ *--------------------------------------------------------------------------------------------*/
 import type { Links } from "./links";
 
 /**
@@ -128,6 +128,11 @@ export interface GetRepositoryResourceMinimalResponse {
       /** Graphics-related capabilities */
       graphics: {
         /** URI for graphics access */
+        uri: string;
+      };
+      /** Thumbnail capabilities, available for repositories that support thumbnail images */
+      thumbnail?: {
+        /** A uri containing the location of the thumbnail for this resource. */
         uri: string;
       };
     };
