@@ -366,11 +366,11 @@ export abstract class BaseBentleyAPIClient {
   }
 
   /**
-   * Validates that a redirect URL is secure and targets a trusted APIM Bentley domain.
+   * Validates that a redirect URL is secure and targets a trusted Bentley domain.
    *
    * This method enforces security requirements for following HTTP redirects:
    * - URL must use HTTPS protocol (not HTTP)
-  * - Domain must be an approved Bentley API domain
+   * - Domain must be a Bentley domain
    *
    * @param url - The redirect URL to validate
    * @returns True if the URL is valid and safe to follow
@@ -406,19 +406,35 @@ export abstract class BaseBentleyAPIClient {
       );
     }
 
-    // Validate the hostname against the approved Bentley API domains.
+    // Validate the hostname against Bentley domains.
     const hostname = parsedUrl.hostname.toLowerCase();
-    const isBentleyDomain =
-      hostname === "api.bentley.com" ||
-      /^(qa|dev|staging)-api\.bentley\.com$/.test(hostname);
+    const isBentleyDomain = this.isValidBentleyUrl(url);
 
     if (!isBentleyDomain) {
       throw new Error(
-        `Invalid redirect URL: domain "${hostname}" is not a trusted Bentley domain. Only approved Bentley API domains are allowed.`
+        `Invalid redirect URL: domain "${hostname}" is not a trusted Bentley domain. Only Bentley domains are allowed.`
       );
     }
 
     return true;
+  }
+
+  /**
+   * Validates that a URL uses HTTPS and targets an exact Bentley domain boundary.
+   * Allows `bentley.com` and its subdomains while rejecting lookalike domains.
+   *
+   * @param url - The request URL to validate
+   * @returns True when the URL is a valid Bentley HTTPS URL
+   */
+  private isValidBentleyUrl(url: string): boolean {
+    try {
+      const parsedUrl = new URL(url);
+      const hostname = parsedUrl.hostname.toLowerCase();
+      return parsedUrl.protocol === "https:" &&
+        (hostname === "bentley.com" || hostname.endsWith(".bentley.com"));
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -447,7 +463,17 @@ export abstract class BaseBentleyAPIClient {
     if (!url) {
       throw new Error("URL is required");
     }
+    const includeAuthorization = this.isValidBentleyUrl(url);
+    const requestHeaders = includeAuthorization
+      ? { ...headers, authorization: accessTokenString }
+      : Object.fromEntries(
+          Object.entries(headers).filter(
+            ([header]) => header.toLowerCase() !== "authorization"
+          )
+        );
     let body: string | Blob | undefined;
+    const contentType = headers.contentType || headers["content-type"] || "application/json";
+
     if (!(data instanceof Blob)) {
       body = JSON.stringify(data);
     } else {
@@ -458,12 +484,8 @@ export abstract class BaseBentleyAPIClient {
       url,
       body,
       headers: {
-        ...headers,
-        authorization: accessTokenString,
-        "content-type":
-          headers.contentType || headers["content-type"]
-            ? headers.contentType || headers["content-type"]
-            : "application/json",
+        ...requestHeaders,
+        "content-type": contentType,
       },
     };
   }
